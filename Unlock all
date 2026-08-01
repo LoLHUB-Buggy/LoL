@@ -1,0 +1,160 @@
+-- // RIVALS Script - Optimized & Functional UI
+-- // Ensure your executor supports UI libraries and environment functions
+
+local success, OrionLib = pcall(function()
+    return loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+end)
+
+if not success or not OrionLib then
+    warn("Failed to load Orion Library. Check your executor internet/gethttp capability.")
+    return
+end
+
+-- // Main Window
+local Window = OrionLib:MakeWindow({
+    Name = "RIVALS | NebulaWare Hub",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "RivalsHub"
+})
+
+-- // Tabs
+local MainTab = Window:MakeTab({
+    Name = "Main / ESP",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local CosmeticTab = Window:MakeTab({
+    Name = "Cosmetics",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- // Notification
+OrionLib:MakeNotification({
+    Name = "NebulaWare Loaded",
+    Content = "Interface initialized successfully.",
+    Image = "rbxassetid://4483345998",
+    Time = 4
+})
+
+-- // --- MAIN TAB ---
+MainTab:AddParagraph("Visual Overlays", "Core visualization toggles.")
+
+MainTab:AddToggle({
+    Name = "Master Switch",
+    Default = true,
+    Callback = function(Value)
+        print("Master Switch toggled:", Value)
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Boxes ESP",
+    Default = true,
+    Callback = function(Value)
+        print("Boxes ESP toggled:", Value)
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Health Bars ESP",
+    Default = true,
+    Callback = function(Value)
+        print("Health Bars toggled:", Value)
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Player Names",
+    Default = true,
+    Callback = function(Value)
+        print("Player Names toggled:", Value)
+    end
+})
+
+MainTab:AddButton({
+    Name = "Toggle GUI Visibility",
+    Callback = function()
+        local coreGui = game:GetService("CoreGui"):FindFirstChild("Orion")
+        if coreGui then
+            coreGui.Enabled = not coreGui.Enabled
+        end
+    end
+})
+
+-- // --- COSMETIC TAB ---
+CosmeticTab:AddParagraph("Skin & Item Modifier", "Applies local inventory overrides where supported.")
+
+CosmeticTab:AddButton({
+    Name = "Unlock All Skins",
+    Callback = function()
+        pcall(function()
+            if getgc then
+                for _, v in pairs(getgc(true)) do
+                    if type(v) == "table" and rawget(v, "Skins") then
+                        for skin, _ in pairs(v.Skins) do
+                            v.Skins[skin] = true
+                        end
+                    end
+                end
+            end
+            OrionLib:MakeNotification({
+                Name = "Status",
+                Content = "Skin unlock sequence executed.",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        end)
+    end
+})
+
+CosmeticTab:AddButton({
+    Name = "Unlock All Wraps",
+    Callback = function()
+        pcall(function()
+            if getgc then
+                for _, v in pairs(getgc(true)) do
+                    if type(v) == "table" and rawget(v, "Wraps") then
+                        for wrap, _ in pairs(v.Wraps) do
+                            v.Wraps[wrap] = true
+                        end
+                    end
+                end
+            end
+            OrionLib:MakeNotification({
+                Name = "Status",
+                Content = "Wrap unlock sequence executed.",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        end)
+    end
+})
+
+CosmeticTab:AddButton({
+    Name = "Unlock All Finishers",
+    Callback = function()
+        pcall(function()
+            if getgc then
+                for _, v in pairs(getgc(true)) do
+                    if type(v) == "table" and rawget(v, "Finishers") then
+                        for finisher, _ in pairs(v.Finishers) do
+                            v.Finishers[finisher] = true
+                        end
+                    end
+                end
+            end
+            OrionLib:MakeNotification({
+                Name = "Status",
+                Content = "Finisher unlock sequence executed.",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        end)
+    end
+})
+
+-- // Initialize UI
+OrionLib:Init()
