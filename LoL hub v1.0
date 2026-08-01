@@ -1,0 +1,603 @@
+--[[
+    LoL Hub - Roblox Rivals Script (Advanced Melee Aura & Combat Edition)
+    Features: Modern Cyberpunk GUI, Draggable & Collapsible Mobile Support,
+    Melee Aura with Instant TP Follow, Auto-Target Active Combat Enemy, Attack Speed Adjustment (1-10s/ticks),
+    Teleport to Player, Void Protection & Anti-Void (-999k Y-Level), Height Adjustment Slider (1-50),
+    Triggerbot, Silent Aim (Runtime Camera Alignment), Fly, Noclip, 
+    Deep-Recursive Unlock All Skins, Wraps & Finishers, Anti-Crash Loop
+]]--
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+-- Anti-Crash & Anti-Pipeline-Crash Protection Loop
+task.spawn(function()
+    while true do
+        task.wait(1)
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            game:GetService("Stats").DataReceiveKbps:GetPropertyChangedSignal():Connect(function()end)
+        end)
+    end
+end)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+-- Remove existing UI if present
+if CoreGui:FindFirstChild("LoLHubAdvancedUI") then
+    CoreGui.LoLHubAdvancedUI:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LoLHubAdvancedUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Floating Toggle Button ("LoL" Cyberpunk Style)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleLoL"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+ToggleButton.Position = UDim2.new(0, 25, 0, 25)
+ToggleButton.Size = UDim2.new(0, 65, 0, 65)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Text = "LoL"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+ToggleButton.TextSize = 24
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 16)
+ToggleCorner.Parent = ToggleButton
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Color = Color3.fromRGB(255, 0, 0)
+ToggleStroke.Thickness = 2
+ToggleStroke.Parent = ToggleButton
+
+-- Main GUI Window Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -270)
+MainFrame.Size = UDim2.new(0, 450, 0, 540)
+MainFrame.Visible = false
+MainFrame.ClipsDescendants = true
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(255, 30, 30)
+MainStroke.Thickness = 2
+MainStroke.Parent = MainFrame
+
+-- Top Bar Header
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Parent = MainFrame
+TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+TopBar.Size = UDim2.new(1, 0, 0, 45)
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 12)
+TopCorner.Parent = TopBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = TopBar
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.Size = UDim2.new(0, 300, 1, 0)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "⚡ LOL HUB | Rivals Advanced"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Close Window Button Inside Header
+local WinCloseBtn = Instance.new("TextButton")
+WinCloseBtn.Parent = TopBar
+WinCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+WinCloseBtn.Position = UDim2.new(1, -38, 0.5, -14)
+WinCloseBtn.Size = UDim2.new(0, 28, 0, 28)
+WinCloseBtn.Font = Enum.Font.GothamBold
+WinCloseBtn.Text = "X"
+WinCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+WinCloseBtn.TextSize = 14
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = WinCloseBtn
+
+WinCloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    TweenService:Create(ToggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(15, 15, 20)}):Play()
+end)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        TweenService:Create(ToggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(180, 0, 0)}):Play()
+    else
+        TweenService:Create(ToggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(15, 15, 20)}):Play()
+    end
+end)
+
+-- Scrolling Container for Features
+local ScrollContainer = Instance.new("ScrollingFrame")
+ScrollContainer.Parent = MainFrame
+ScrollContainer.BackgroundTransparency = 1
+ScrollContainer.Position = UDim2.new(0, 10, 0, 55)
+ScrollContainer.Size = UDim2.new(1, -20, 1, -65)
+ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, 950)
+ScrollContainer.ScrollBarThickness = 4
+ScrollContainer.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 50)
+
+local UIList = Instance.new("UIListLayout")
+UIList.Parent = ScrollContainer
+UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 10)
+
+-- Modern Button Creator Helper
+local function createButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Parent = ScrollContainer
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    btn.Size = UDim2.new(1, -10, 0, 42)
+    btn.Font = Enum.Font.GothamMedium
+    btn.Text = "   " .. text
+    btn.TextColor3 = Color3.fromRGB(230, 230, 230)
+    btn.TextSize = 14
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(45, 45, 60)
+    stroke.Thickness = 1
+    stroke.Parent = btn
+    
+    local indicator = Instance.new("Frame")
+    indicator.Name = "Indicator"
+    indicator.Parent = btn
+    indicator.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    indicator.Position = UDim2.new(1, -32, 0.5, -10)
+    indicator.Size = UDim2.new(0, 20, 0, 20)
+    
+    local indCorner = Instance.new("UICorner")
+    indCorner.CornerRadius = UDim.new(0, 4)
+    indCorner.Parent = indicator
+    
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 15, 15)}):Play()
+            TweenService:Create(stroke, TweenInfo.new(0.2), {Color3 = Color3.fromRGB(255, 50, 50)}):Play()
+            TweenService:Create(indicator, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
+        else
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(25, 25, 35)}):Play()
+            TweenService:Create(stroke, TweenInfo.new(0.2), {Color3 = Color3.fromRGB(45, 45, 60)}):Play()
+            TweenService:Create(indicator, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+        end
+        callback(active)
+    end)
+    return btn
+end
+
+-- 1. Deep-Recursive Unlock All Skins, Wraps & Finishers
+createButton("Unlock All Skins, Wraps & Finishers", function(state)
+    pcall(function()
+        local function deepUnlock(tbl, visited)
+            visited = visited or {}
+            if visited[tbl] then return end
+            visited[tbl] = true
+
+            for k, v in pairs(tbl) do
+                local keyStr = tostring(k):lower()
+                if type(v) == "boolean" then
+                    if keyStr:find("skin") or keyStr:find("wrap") or keyStr:find("finisher") or keyStr:find("unlock") or keyStr:find("owned") then
+                        tbl[k] = true
+                    end
+                elseif type(v) == "table" then
+                    if keyStr:find("skin") or keyStr:find("wrap") or keyStr:find("finisher") or keyStr:find("inventory") or keyStr:find("arsenal") then
+                        for subK, _ in pairs(v) do
+                            v[subK] = true
+                        end
+                    end
+                    deepUnlock(v, visited)
+                end
+            end
+        end
+
+        for _, obj in pairs(getgc(true)) do
+            if type(obj) == "table" then
+                deepUnlock(obj)
+            end
+        end
+    end)
+end)
+
+-- 2. Silent Aim (Toggle Runtime Camera Alignment)
+local silentAimEnabled = false
+createButton("Toggle Runtime Camera Alignment (Silent Aim)", function(state)
+    silentAimEnabled = state
+end)
+
+RunService.RenderStepped:Connect(function()
+    if silentAimEnabled then
+        pcall(function()
+            local camera = Workspace.CurrentCamera
+            local closestTarget = nil
+            local shortestDistance = math.huge
+            
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    if humanoid and humanoid.Health > 0 then
+                        local pos, onScreen = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+                        if onScreen then
+                            local magnitude = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                            if magnitude < shortestDistance then
+                                shortestDistance = magnitude
+                                closestTarget = player.Character.HumanoidRootPart
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if closestTarget then
+                camera.CFrame = CFrame.new(camera.CFrame.Position, closestTarget.Position)
+            end
+        end)
+    end
+end)
+
+-- 3. Triggerbot
+local triggerbotEnabled = false
+createButton("Triggerbot (Auto Fire on Crosshair Target)", function(state)
+    triggerbotEnabled = state
+end)
+
+RunService.RenderStepped:Connect(function()
+    if triggerbotEnabled then
+        pcall(function()
+            local camera = Workspace.CurrentCamera
+            local mouseLoc = UserInputService:GetMouseLocation()
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                    local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then
+                        local screenPos, onScreen = camera:WorldToViewportPoint(player.Character.Head.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouseLoc).Magnitude
+                            if dist < 25 then
+                                local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                                if tool then
+                                    tool:Activate()
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- Variables for Melee Aura & Attack Speed Adjustment
+local meleeAuraEnabled = false
+local attackSpeedRate = 0.5 -- Default attack/tp rate in seconds
+
+-- 4. Melee Aura (Auto-detects active combat enemy, TP follows & attacks, pauses when turned off)
+createButton("Melee Aura (Auto-Detect Target & TP Follow)", function(state)
+    meleeAuraEnabled = state
+end)
+
+-- 5. Attack Speed Adjustment Slider (1 - 10 seconds / tick frequency)
+local speedSliderFrame = Instance.new("Frame")
+speedSliderFrame.Parent = ScrollContainer
+speedSliderFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+speedSliderFrame.Size = UDim2.new(1, -10, 0, 60)
+
+local spCorner = Instance.new("UICorner")
+spCorner.CornerRadius = UDim.new(0, 8)
+spCorner.Parent = speedSliderFrame
+
+local spStroke = Instance.new("UIStroke")
+spStroke.Color = Color3.fromRGB(45, 45, 60)
+spStroke.Parent = speedSliderFrame
+
+local spLabel = Instance.new("TextLabel")
+spLabel.Parent = speedSliderFrame
+spLabel.BackgroundTransparency = 1
+spLabel.Position = UDim2.new(0, 15, 0, 8)
+spLabel.Size = UDim2.new(1, -30, 0, 20)
+spLabel.Font = Enum.Font.GothamMedium
+spLabel.Text = "Melee Attack Speed Delay (1 - 10s): 0.5s"
+spLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+spLabel.TextSize = 13
+spLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local speedBar = Instance.new("TextButton")
+speedBar.Parent = speedSliderFrame
+speedBar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+speedBar.Position = UDim2.new(0, 15, 0, 35)
+speedBar.Size = UDim2.new(1, -30, 0, 12)
+speedBar.Text = ""
+speedBar.AutoButtonColor = false
+
+local sbCorner = Instance.new("UICorner")
+sbCorner.CornerRadius = UDim.new(0, 6)
+sbCorner.Parent = speedBar
+
+local speedFill = Instance.new("Frame")
+speedFill.Parent = speedBar
+speedFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+speedFill.Size = UDim2.new(0.05, 0, 1, 0)
+
+local sfCorner = Instance.new("UICorner")
+sfCorner.CornerRadius = UDim.new(0, 6)
+sfCorner.Parent = speedFill
+
+local draggingSpeedSlider = false
+speedBar.MouseButton1Down:Connect(function()
+    draggingSpeedSlider = true
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSpeedSlider = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if draggingSpeedSlider then
+        local mousePos = UserInputService:GetMouseLocation().X
+        local barAbsolutePos = speedBar.AbsolutePosition.X
+        local barAbsoluteSize = speedBar.AbsoluteSize.X
+        local relX = math.clamp(mousePos - barAbsolutePos, 0, barAbsoluteSize)
+        local percentage = relX / barAbsoluteSize
+        
+        speedFill.Size = UDim2.new(percentage, 0, 1, 0)
+        attackSpeedRate = math.clamp(math.floor(1 + (percentage * 9) + 0.5), 1, 10)
+        spLabel.Text = "Melee Attack Speed Delay (1 - 10s): " .. tostring(attackSpeedRate) .. "s"
+    end
+end)
+
+-- Melee Aura Loop (TP Follow + Active Target Detection + Instant Pause Handling)
+task.spawn(function()
+    while true do
+        if meleeAuraEnabled then
+            pcall(function()
+                local character = LocalPlayer.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local rootPart = character.HumanoidRootPart
+                    local currentTarget = nil
+                    local shortestDist = math.huge
+                    
+                    -- Auto-detect player that is currently closest/being fought
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                            if hum and hum.Health > 0 then
+                                local dist = (rootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                                if dist < shortestDist then
+                                    shortestDist = dist
+                                    currentTarget = player.Character.HumanoidRootPart
+                                end
+                            end
+                        end
+                    end
+                    
+                    if currentTarget then
+                        -- TP Follow immediately behind/near the target
+                        rootPart.CFrame = currentTarget.CFrame * CFrame.new(0, 0, 3)
+                        
+                        -- Activate tool/weapon
+                        local tool = character:FindFirstChildOfClass("Tool")
+                        if tool then
+                            tool:Activate()
+                        end
+                    end
+                end
+            end)
+            task.wait(attackSpeedRate)
+        else
+            -- Paused immediately when toggled off
+            task.wait(0.2)
+        end
+    end
+end)
+
+-- 6. Teleport to Nearest Player
+createButton("Teleport to Nearest Player", function(state)
+    pcall(function()
+        local character = LocalPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+        local rootPart = character.HumanoidRootPart
+        
+        local closestTarget = nil
+        local shortestDist = math.huge
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local dist = (rootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closestTarget = player.Character.HumanoidRootPart
+                    end
+                end
+            end
+        end
+        
+        if closestTarget then
+            rootPart.CFrame = closestTarget.CFrame + Vector3.new(0, 3, 0)
+        end
+    end)
+end)
+
+-- 7. Hide Void & Anti-Void (-999k Y Level Protection)
+local antiVoidEnabled = false
+createButton("Hide Void & Anti-Void (-999k Y Level Protection)", function(state)
+    antiVoidEnabled = state
+end)
+
+RunService.Stepped:Connect(function()
+    if antiVoidEnabled then
+        pcall(function()
+            local character = LocalPlayer.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local root = character.HumanoidRootPart
+                if root.Position.Y < -500 then
+                    root.CFrame = CFrame.new(root.Position.X, 50, root.Position.Z)
+                    root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end)
+    end
+end)
+
+-- 8. Height Adjustment Slider (1 - 50 studs above ground)
+local currentHeightOffset = 1
+local heightSliderFrame = Instance.new("Frame")
+heightSliderFrame.Parent = ScrollContainer
+heightSliderFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+heightSliderFrame.Size = UDim2.new(1, -10, 0, 60)
+
+local hCorner = Instance.new("UICorner")
+hCorner.CornerRadius = UDim.new(0, 8)
+hCorner.Parent = heightSliderFrame
+
+local hStroke = Instance.new("UIStroke")
+hStroke.Color = Color3.fromRGB(45, 45, 60)
+hStroke.Parent = heightSliderFrame
+
+local hLabel = Instance.new("TextLabel")
+hLabel.Parent = heightSliderFrame
+hLabel.BackgroundTransparency = 1
+hLabel.Position = UDim2.new(0, 15, 0, 8)
+hLabel.Size = UDim2.new(1, -30, 0, 20)
+hLabel.Font = Enum.Font.GothamMedium
+hLabel.Text = "Height Adjustment (1 - 50): 1"
+hLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+hLabel.TextSize = 13
+hLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local sliderBar = Instance.new("TextButton")
+sliderBar.Parent = heightSliderFrame
+sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+sliderBar.Position = UDim2.new(0, 15, 0, 35)
+sliderBar.Size = UDim2.new(1, -30, 0, 12)
+sliderBar.Text = ""
+sliderBar.AutoButtonColor = false
+
+local sCorner = Instance.new("UICorner")
+sCorner.CornerRadius = UDim.new(0, 6)
+sCorner.Parent = sliderBar
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Parent = sliderBar
+sliderFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+sliderFill.Size = UDim2.new(0, 10, 1, 0)
+
+local fCorner = Instance.new("UICorner")
+fCorner.CornerRadius = UDim.new(0, 6)
+fCorner.Parent = sliderFill
+
+local draggingSlider = false
+sliderBar.MouseButton1Down:Connect(function()
+    draggingSlider = true
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if draggingSlider then
+        local mousePos = UserInputService:GetMouseLocation().X
+        local barAbsolutePos = sliderBar.AbsolutePosition.X
+        local barAbsoluteSize = sliderBar.AbsoluteSize.X
+        local relX = math.clamp(mousePos - barAbsolutePos, 0, barAbsoluteSize)
+        local percentage = relX / barAbsoluteSize
+        
+        sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+        currentHeightOffset = math.floor(1 + (percentage * 49))
+        hLabel.Text = "Height Adjustment (1 - 50): " .. tostring(currentHeightOffset)
+    end
+end)
+
+-- 9. Fly
+local flyEnabled = false
+local flySpeed = 50
+createButton("Fly (WASD + Camera Direction)", function(state)
+    flyEnabled = state
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local rootPart = character.HumanoidRootPart
+    
+    if flyEnabled then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "LoLFlyVelocity"
+        bv.Parent = rootPart
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        
+        task.spawn(function()
+            while flyEnabled and character and rootPart.Parent do
+                local camera = Workspace.CurrentCamera
+                local vel = Vector3.new()
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then vel = vel + camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then vel = vel - camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then vel = vel - camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then vel = vel + camera.CFrame.RightVector end
+                
+                vel = vel + Vector3.new(0, (currentHeightOffset - 1) * 0.1, 0)
+                
+                bv.Velocity = vel * flySpeed
+                RunService.RenderStepped:Wait()
+            end
+            if bv then bv:Destroy() end
+        end)
+    else
+        if rootPart:FindFirstChild("LoLFlyVelocity") then
+            rootPart.LoLFlyVelocity:Destroy()
+        end
+    end
+end)
+
+-- 10. Noclip
+local noclipEnabled = false
+createButton("Noclip (Walk Through Walls)", function(state)
+    noclipEnabled = state
+end)
+
+RunService.Stepped:Connect(function()
+    if noclipEnabled and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
