@@ -1,0 +1,238 @@
+--[[
+    LoL Hub - Roblox Rivals Script
+    Features: Mobile Support (Floating 'LoL' Toggle), Open/Close GUI Menu, 
+    Anti-Crash Protection, Silent Aim (Runtime Camera Alignment), Fly, Noclip, Skin/Wrap/Finisher Unlocker
+]]--
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+-- Anti-Crash & Anti-Pipeline-Crash Protection Loop
+task.spawn(function()
+    while true do
+        task.wait(1)
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            game:GetService("Stats").DataReceiveKbps:GetPropertyChangedSignal():Connect(function()end)
+        end)
+    end
+end)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Remove existing UI if present
+if CoreGui:FindFirstChild("LoLHubUI") then
+    CoreGui.LoLHubUI:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LoLHubUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- Floating Toggle Button ("LoL") for Mobile Support (Open/Close GUI)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleLoL"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.BorderColor3 = Color3.fromRGB(255, 0, 0)
+ToggleButton.Position = UDim2.new(0, 20, 0, 20)
+ToggleButton.Size = UDim2.new(0, 60, 0, 60)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "LoL"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 22
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+
+-- Main GUI Hub Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 300, 0, 440)
+MainFrame.Visible = false
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "LoL Hub - Rivals GUI"
+Title.TextColor3 = Color3.fromRGB(255, 0, 0)
+Title.TextSize = 20
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = MainFrame
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
+
+-- Spacer to keep layout clean beneath title
+local Spacer = Instance.new("Frame")
+Spacer.Parent = MainFrame
+Spacer.Size = UDim2.new(1, 0, 0, 10)
+Spacer.BackgroundTransparency = 1
+
+-- Open/Close GUI Functionality via Floating Button
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    else
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end
+end)
+
+-- Dedicated Close Button inside the GUI Menu
+local CloseButton = Instance.new("TextButton")
+CloseButton.Parent = MainFrame
+CloseButton.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+CloseButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Size = UDim2.new(0, 260, 0, 32)
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.Text = "Close Menu [X]"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 14
+
+CloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+end)
+
+-- Helper function to create interactive GUI toggle buttons
+local function createButton(name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Parent = MainFrame
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Size = UDim2.new(0, 260, 0, 38)
+    btn.Font = Enum.Font.SourceSans
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 15
+    
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        end
+        callback(active)
+    end)
+    return btn
+end
+
+-- 1. Unlock All Skins, Wraps & Finishers
+createButton("Unlock All Skins, Wraps & Finishers", function(state)
+    pcall(function()
+        for _, v in pairs(getgc(true)) do
+            if typeof(v) == "table" then
+                if rawget(v, "Skins") or rawget(v, "Wraps") or rawget(v, "Finishers") then
+                    for k, _ in pairs(v) do
+                        v[k] = true
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- 2. Silent Aim (Toggle Runtime Camera Alignment)
+-- How it works: Runs every frame to dynamically locate the closest visible enemy player 
+-- and adjust the workspace camera orientation to align with their torso/root part.
+local silentAimEnabled = false
+createButton("Toggle Runtime Camera Alignment", function(state)
+    silentAimEnabled = state
+end)
+
+RunService.RenderStepped:Connect(function()
+    if silentAimEnabled then
+        pcall(function()
+            local camera = workspace.CurrentCamera
+            local closestTarget = nil
+            local shortestDistance = math.huge
+            
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    if humanoid and humanoid.Health > 0 then
+                        local pos, onScreen = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+                        if onScreen then
+                            local magnitude = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                            if magnitude < shortestDistance then
+                                shortestDistance = magnitude
+                                closestTarget = player.Character.HumanoidRootPart
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if closestTarget then
+                camera.CFrame = CFrame.new(camera.CFrame.Position, closestTarget.Position)
+            end
+        end)
+    end
+end)
+
+-- 3. Fly
+local flyEnabled = false
+local flySpeed = 50
+createButton("Fly", function(state)
+    flyEnabled = state
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local rootPart = character.HumanoidRootPart
+    
+    if flyEnabled then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "LoLFlyVelocity"
+        bv.Parent = rootPart
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        
+        task.spawn(function()
+            while flyEnabled and character and rootPart.Parent do
+                local camera = workspace.CurrentCamera
+                local vel = Vector3.new()
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then vel = vel + camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then vel = vel - camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then vel = vel - camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then vel = vel + camera.CFrame.RightVector end
+                bv.Velocity = vel * flySpeed
+                RunService.RenderStepped:Wait()
+            end
+            if bv then bv:Destroy() end
+        end)
+    else
+        if rootPart:FindFirstChild("LoLFlyVelocity") then
+            rootPart.LoLFlyVelocity:Destroy()
+        end
+    end
+end)
+
+-- 4. Noclip
+local noclipEnabled = false
+createButton("Noclip", function(state)
+    noclipEnabled = state
+end)
+
+RunService.Stepped:Connect(function()
+    if noclipEnabled and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
