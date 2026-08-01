@@ -1,0 +1,486 @@
+-- ============================================================
+-- LoL 1.11 - COMPLETE SCRIPT (NO PIPELINE CRASH)
+-- Delta Executor Optimized | Roblox Rivals
+-- Features: Ragebot, Unlock All Skins/Wraps/Finishers, Void Hide
+-- ============================================================
+
+-- ==================== ANTI-CRASH WRAPPER ====================
+local function safeCall(func, ...)
+    local status, result = pcall(func, ...)
+    if not status then
+        warn("[LoL] Pipeline safe: " .. tostring(result))
+        return nil
+    end
+    return result
+end
+
+-- ==================== GLOBAL CONFIG ====================
+_G.LoL = _G.LoL or {}
+_G.LoL.Rage = false
+_G.LoL.Trigger = false
+_G.LoL.Aim = false
+_G.LoL.AntiAim = false
+_G.LoL.VoidHide = false
+_G.LoL.FOV = 90
+_G.LoL.VoidY = -999999
+_G.LoL.UnlockSkins = false
+_G.LoL.UnlockWraps = false
+_G.LoL.UnlockFinishers = false
+_G.LoL.Loaded = false
+
+-- ==================== MAIN EXECUTION ====================
+local function main()
+    if _G.LoL.Loaded then return end
+    _G.LoL.Loaded = true
+
+    local player = safeCall(function() return game.Players.LocalPlayer end)
+    if not player then
+        warn("[LoL] No LocalPlayer")
+        _G.LoL.Loaded = false
+        return
+    end
+
+    -- ==================== GUI (SAFE) ====================
+    safeCall(function()
+        if player.PlayerGui:FindFirstChild("LoL_UnlockGUI") then
+            player.PlayerGui.LoL_UnlockGUI:Destroy()
+        end
+    end)
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LoL_UnlockGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 360, 0, 620)
+    mainFrame.Position = UDim2.new(0.5, -180, 0.5, -310)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
+    mainFrame.BackgroundTransparency = 0.05
+    mainFrame.BorderSizePixel = 2
+    mainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🔥 LoL 1.11 [NO CRASH]"
+    title.TextColor3 = Color3.fromRGB(255, 50, 50)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 32, 0, 32)
+    closeBtn.Position = UDim2.new(1, -38, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextScaled = true
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = mainFrame
+    closeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = not mainFrame.Visible
+    end)
+
+    -- Status
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 28)
+    statusLabel.Position = UDim2.new(0.05, 0, 0, 48)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Status: Ready"
+    statusLabel.TextColor3 = Color3.fromRGB(180, 200, 255)
+    statusLabel.TextScaled = true
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.Parent = mainFrame
+
+    -- Button helper
+    local function createBtn(text, y, color, cb)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.9, 0, 0, 38)
+        btn.Position = UDim2.new(0.05, 0, 0, y)
+        btn.BackgroundColor3 = color or Color3.fromRGB(50, 50, 80)
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextScaled = true
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = mainFrame
+        btn.MouseButton1Click:Connect(cb)
+        return btn
+    end
+
+    local y = 85
+    createBtn("🔓 Unlock All Skins", y, Color3.fromRGB(0, 120, 210), function()
+        safeCall(unlock_skins)
+        statusLabel.Text = "✅ Skins unlocked"
+    end)
+    y = y + 46
+
+    createBtn("🎨 Unlock All Wraps", y, Color3.fromRGB(0, 170, 90), function()
+        safeCall(unlock_wraps)
+        statusLabel.Text = "✅ Wraps unlocked"
+    end)
+    y = y + 46
+
+    createBtn("💀 Unlock All Finishers", y, Color3.fromRGB(210, 130, 0), function()
+        safeCall(unlock_finishers)
+        statusLabel.Text = "✅ Finishers unlocked"
+    end)
+    y = y + 46
+
+    createBtn("⚡ UNLOCK ALL", y, Color3.fromRGB(200, 40, 40), function()
+        safeCall(unlock_skins)
+        safeCall(unlock_wraps)
+        safeCall(unlock_finishers)
+        statusLabel.Text = "✅ ALL UNLOCKED!"
+    end)
+    y = y + 52
+
+    -- Toggles
+    local function createToggle(text, var, color, yPos)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.43, 0, 0, 38)
+        btn.Position = UDim2.new(0.05 + (yPos % 2 == 1 and 0.47 or 0), 0, 0, yPos)
+        btn.BackgroundColor3 = color
+        btn.Text = text .. ": OFF"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextScaled = true
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = mainFrame
+        btn.MouseButton1Click:Connect(function()
+            _G.LoL[var] = not _G.LoL[var]
+            btn.Text = text .. ": " .. (_G.LoL[var] and "ON" or "OFF")
+            btn.BackgroundColor3 = _G.LoL[var] and color or Color3.fromRGB(color.R * 0.3, color.G * 0.3, color.B * 0.3)
+        end)
+        return btn
+    end
+
+    createToggle("💢 Rage", "Rage", Color3.fromRGB(200, 30, 30), y)
+    createToggle("🎯 Trigger", "Trigger", Color3.fromRGB(30, 180, 30), y)
+    y = y + 46
+
+    createToggle("👁️ Aim", "Aim", Color3.fromRGB(30, 30, 200), y)
+    createToggle("🌀 AntiAim", "AntiAim", Color3.fromRGB(180, 30, 180), y)
+    y = y + 46
+
+    createToggle("🌌 Void Hide", "VoidHide", Color3.fromRGB(130, 0, 200), y)
+    y = y + 52
+
+    -- FOV
+    local fovBtn = Instance.new("TextButton")
+    fovBtn.Size = UDim2.new(0.9, 0, 0, 34)
+    fovBtn.Position = UDim2.new(0.05, 0, 0, y)
+    fovBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 65)
+    fovBtn.Text = "📐 FOV: 90°"
+    fovBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    fovBtn.TextScaled = true
+    fovBtn.Font = Enum.Font.Gotham
+    fovBtn.Parent = mainFrame
+    fovBtn.MouseButton1Click:Connect(function()
+        local cur = _G.LoL.FOV + 15
+        if cur > 180 then cur = 15 end
+        _G.LoL.FOV = cur
+        fovBtn.Text = "📐 FOV: " .. cur .. "°"
+    end)
+
+    -- ==================== UNLOCK FUNCTIONS ====================
+    function unlock_skins()
+        local success = false
+        local replicated_storage = game:GetService("ReplicatedStorage")
+        local local_player = game.Players.LocalPlayer
+
+        local remote = replicated_storage:FindFirstChild("UnlockSkin") or 
+                       replicated_storage:FindFirstChild("PurchaseSkin") or
+                       replicated_storage:FindFirstChild("RemoteEvent")
+        if remote and remote:IsA("RemoteEvent") then
+            for id = 1, 300 do pcall(function() remote:FireServer(id, "Unlock") end) end
+            success = true
+        end
+
+        if getgc then
+            for _, v in pairs(getgc(true)) do
+                if type(v) == "table" then
+                    pcall(function()
+                        if v.SkinData then
+                            for k, data in pairs(v) do
+                                if type(data) == "table" and data.Owned ~= nil then data.Owned = true end
+                            end
+                        end
+                        if v.Skins and type(v.Skins) == "table" then
+                            for k, skin in pairs(v.Skins) do
+                                if type(skin) == "table" then skin.Unlocked = true; skin.Owned = true end
+                            end
+                        end
+                    end)
+                end
+            end
+            success = true
+        end
+
+        local leaderstats = local_player:FindFirstChild("leaderstats")
+        if leaderstats then
+            local skins_unlocked = leaderstats:FindFirstChild("SkinsUnlocked")
+            if skins_unlocked then skins_unlocked.Value = 9999 end
+            success = true
+        end
+        return success
+    end
+
+    function unlock_wraps()
+        local success = false
+        local replicated_storage = game:GetService("ReplicatedStorage")
+        local local_player = game.Players.LocalPlayer
+
+        local remote = replicated_storage:FindFirstChild("UnlockWrap") or 
+                       replicated_storage:FindFirstChild("PurchaseWrap")
+        if remote and remote:IsA("RemoteEvent") then
+            for id = 1, 200 do pcall(function() remote:FireServer(id, "Unlock") end) end
+            success = true
+        end
+
+        if getgc then
+            for _, v in pairs(getgc(true)) do
+                if type(v) == "table" then
+                    pcall(function()
+                        if v.WrapData then
+                            for k, data in pairs(v) do
+                                if type(data) == "table" and data.Owned ~= nil then data.Owned = true end
+                            end
+                        end
+                        if v.Wraps and type(v.Wraps) == "table" then
+                            for k, wrap in pairs(v.Wraps) do
+                                if type(wrap) == "table" then wrap.Unlocked = true; wrap.Owned = true end
+                            end
+                        end
+                    end)
+                end
+            end
+            success = true
+        end
+
+        local leaderstats = local_player:FindFirstChild("leaderstats")
+        if leaderstats then
+            local wraps_unlocked = leaderstats:FindFirstChild("WrapsUnlocked")
+            if wraps_unlocked then wraps_unlocked.Value = 9999 end
+            success = true
+        end
+        return success
+    end
+
+    function unlock_finishers()
+        local success = false
+        local replicated_storage = game:GetService("ReplicatedStorage")
+        local local_player = game.Players.LocalPlayer
+
+        local remote = replicated_storage:FindFirstChild("UnlockFinisher") or 
+                       replicated_storage:FindFirstChild("PurchaseFinisher")
+        if remote and remote:IsA("RemoteEvent") then
+            for id = 1, 100 do pcall(function() remote:FireServer(id, "Unlock") end) end
+            success = true
+        end
+
+        if getgc then
+            for _, v in pairs(getgc(true)) do
+                if type(v) == "table" then
+                    pcall(function()
+                        if v.FinisherData then
+                            for k, data in pairs(v) do
+                                if type(data) == "table" and data.Owned ~= nil then data.Owned = true end
+                            end
+                        end
+                        if v.Finishers and type(v.Finishers) == "table" then
+                            for k, fin in pairs(v.Finishers) do
+                                if type(fin) == "table" then fin.Unlocked = true; fin.Owned = true end
+                            end
+                        end
+                    end)
+                end
+            end
+            success = true
+        end
+
+        local owned_finishers = local_player:FindFirstChild("OwnedFinishers")
+        if owned_finishers and owned_finishers:IsA("IntValue") then
+            owned_finishers.Value = 9999
+            success = true
+        end
+        return success
+    end
+
+    -- ==================== RAGEBOT CORE ====================
+    local savedPosition = nil
+
+    local function get_players()
+        local list = {}
+        local local_player = game.Players.LocalPlayer
+        if not local_player or not local_player.Character then return list end
+        local headPos = local_player.Character:FindFirstChild("Head")
+        if not headPos then return list end
+
+        for _, plr in pairs(game.Players:GetPlayers()) do
+            if plr ~= local_player and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                local char = plr.Character
+                local head = char:FindFirstChild("Head")
+                local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+                if head and torso then
+                    table.insert(list, {
+                        player = plr,
+                        character = char,
+                        head = head,
+                        torso = torso,
+                        health = plr.Character.Humanoid.Health,
+                        distance = (head.Position - headPos.Position).Magnitude
+                    })
+                end
+            end
+        end
+        return list
+    end
+
+    local function get_target(players)
+        if #players == 0 then return nil end
+        local minDist = math.huge
+        local selected = nil
+        for _, p in ipairs(players) do
+            if p.distance < minDist then
+                minDist = p.distance
+                selected = p
+            end
+        end
+        return selected
+    end
+
+    local function voidHide()
+        if not _G.LoL.VoidHide then return end
+        local local_player = game.Players.LocalPlayer
+        if not local_player or not local_player.Character then return end
+        local rootPart = local_player.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+
+        if not savedPosition then
+            savedPosition = rootPart.Position
+        end
+
+        local voidPos = Vector3.new(rootPart.Position.X, _G.LoL.VoidY, rootPart.Position.Z)
+        rootPart.CFrame = CFrame.new(voidPos)
+
+        for _, part in pairs(local_player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+
+    local function ragebot()
+        if not (_G.LoL.Aim or _G.LoL.Rage) then return end
+
+        local camera = workspace.CurrentCamera
+        if not camera then return end
+
+        local players = get_players()
+        local target = get_target(players)
+        if not target then
+            statusLabel.Text = "🔍 No target"
+            return
+        end
+
+        local targetPos = target.head.Position
+        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
+        if not onScreen then return end
+
+        local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        local fovActual = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+        if fovActual > _G.LoL.FOV then return end
+
+        if _G.LoL.Rage then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, targetPos)
+        elseif _G.LoL.Aim then
+            local currentLook = camera.CFrame
+            local targetCFrame = CFrame.new(camera.CFrame.Position, targetPos)
+            camera.CFrame = currentLook:Lerp(targetCFrame, 0.35)
+        end
+
+        if _G.LoL.Trigger then
+            local vim = game:GetService("VirtualInputManager")
+            if vim then
+                vim:SendMouseButtonEvent(0, 0, true, Enum.UserInputType.MouseButton1, false)
+                task.wait(0.01)
+                vim:SendMouseButtonEvent(0, 0, false, Enum.UserInputType.MouseButton1, false)
+            end
+        end
+
+        if _G.LoL.AntiAim then
+            local jitter = math.sin(tick() * 12) * 0.6
+            local current = camera.CFrame
+            local angles = current:ToEulerAnglesYXZ()
+            angles = Vector3.new(angles.X + jitter, angles.Y + jitter * 0.4, angles.Z)
+            camera.CFrame = CFrame.new(current.Position) * CFrame.Angles(angles.X, angles.Y, angles.Z)
+        end
+
+        statusLabel.Text = "🎯 Locked: " .. target.player.Name
+    end
+
+    -- ==================== MAIN LOOP (NO PIPELINE CRASH) ====================
+    local lastUnlock = 0
+    local runService = game:GetService("RunService")
+
+    runService.Heartbeat:Connect(function()
+        safeCall(function()
+            if _G.LoL.VoidHide then voidHide() end
+            ragebot()
+        end)
+
+        if tick() - lastUnlock > 8 then
+            lastUnlock = tick()
+            safeCall(unlock_skins)
+            safeCall(unlock_wraps)
+            safeCall(unlock_finishers)
+        end
+    end)
+
+    -- ==================== KEYBIND ====================
+    game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.V then
+            _G.LoL.VoidHide = not _G.LoL.VoidHide
+            if _G.LoL.VoidHide then
+                statusLabel.Text = "🌌 Void: ON"
+                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if root then savedPosition = root.Position end
+            else
+                statusLabel.Text = "🌌 Void: OFF"
+                savedPosition = nil
+            end
+        end
+    end)
+
+    -- ==================== NOTIFICATION ====================
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "LoL 1.11 [NO CRASH]",
+        Text = "✅ Loaded! Press V for Void Hide",
+        Duration = 4
+    })
+
+    print("[LoL 1.11] ✅ Full script loaded - NO PIPELINE CRASH")
+end
+
+-- ==================== EXECUTION ====================
+local attempts = 0
+while attempts < 5 do
+    attempts = attempts + 1
+    local ok = pcall(main)
+    if ok and _G.LoL.Loaded then
+        break
+    end
+    task.wait(0.5)
+end
+
+if not _G.LoL.Loaded then
+    warn("[LoL] Retrying direct execution...")
+    pcall(main)
+end
