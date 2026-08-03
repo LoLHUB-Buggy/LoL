@@ -1,0 +1,316 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variables
+local selectedPlayer = nil
+local isFollowing = false
+local isAntiAim = false
+local heightOffset = 10 -- Default height offset
+local isMinimized = false
+local spinAngle = 0
+
+-- UI Creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "EnhancedFollowerGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 240, 0, 360)
+MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Header Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.8, 0, 0, 32)
+Title.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Title.Text = " Overhead Follower"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+-- Minimize Button
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0.2, 0, 0, 32)
+MinimizeBtn.Position = UDim2.new(0.8, 0, 0, 0)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MinimizeBtn.Text = "_"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.SourceSansBold
+MinimizeBtn.TextSize = 18
+MinimizeBtn.Parent = MainFrame
+
+-- Container Frame
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, 0, 1, -32)
+ContentFrame.Position = UDim2.new(0, 0, 0, 32)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainFrame
+
+-- Search Box
+local SearchBox = Instance.new("TextBox")
+SearchBox.Size = UDim2.new(0.9, 0, 0, 25)
+SearchBox.Position = UDim2.new(0.05, 0, 0.02, 0)
+SearchBox.PlaceholderText = "Search Player..."
+SearchBox.Text = ""
+SearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchBox.Font = Enum.Font.SourceSans
+SearchBox.TextSize = 14
+SearchBox.Parent = ContentFrame
+
+-- Player Selection Scrolling List
+local PlayerListFrame = Instance.new("ScrollingFrame")
+PlayerListFrame.Size = UDim2.new(0.9, 0, 0, 95)
+PlayerListFrame.Position = UDim2.new(0.05, 0, 0.12, 0)
+PlayerListFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+PlayerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayerListFrame.ScrollBarThickness = 6
+PlayerListFrame.Parent = ContentFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = PlayerListFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Distance Indicator Label
+local DistanceLabel = Instance.new("TextLabel")
+DistanceLabel.Size = UDim2.new(0.9, 0, 0, 18)
+DistanceLabel.Position = UDim2.new(0.05, 0, 0.44, 0)
+DistanceLabel.Text = "Distance: N/A"
+DistanceLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+DistanceLabel.BackgroundTransparency = 1
+DistanceLabel.Font = Enum.Font.SourceSans
+DistanceLabel.TextSize = 13
+DistanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+DistanceLabel.Parent = ContentFrame
+
+-- Height Controls
+local HeightLabel = Instance.new("TextLabel")
+HeightLabel.Size = UDim2.new(0.55, 0, 0, 22)
+HeightLabel.Position = UDim2.new(0.05, 0, 0.51, 0)
+HeightLabel.Text = "Height (1-50):"
+HeightLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeightLabel.BackgroundTransparency = 1
+HeightLabel.Font = Enum.Font.SourceSans
+HeightLabel.TextSize = 14
+HeightLabel.TextXAlignment = Enum.TextXAlignment.Left
+HeightLabel.Parent = ContentFrame
+
+local HeightBox = Instance.new("TextBox")
+HeightBox.Size = UDim2.new(0.3, 0, 0, 22)
+HeightBox.Position = UDim2.new(0.65, 0, 0.51, 0)
+HeightBox.Text = tostring(heightOffset)
+HeightBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+HeightBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeightBox.Font = Enum.Font.SourceSans
+HeightBox.TextSize = 14
+HeightBox.Parent = ContentFrame
+
+-- Toggle Anti-Aim Button
+local AntiAimBtn = Instance.new("TextButton")
+AntiAimBtn.Size = UDim2.new(0.9, 0, 0, 30)
+AntiAimBtn.Position = UDim2.new(0.05, 0, 0.61, 0)
+AntiAimBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+AntiAimBtn.Text = "Anti-Aim: OFF"
+AntiAimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiAimBtn.Font = Enum.Font.SourceSansBold
+AntiAimBtn.TextSize = 15
+AntiAimBtn.Parent = ContentFrame
+
+-- Toggle Follow Button
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0.9, 0, 0, 32)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.73, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+ToggleBtn.Text = "Follow: OFF"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 15
+ToggleBtn.Parent = ContentFrame
+
+-- Helper Functions
+local function resetPhysics()
+	local myChar = LocalPlayer.Character
+	if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+		myChar.HumanoidRootPart.Anchored = false
+	end
+end
+
+local function stopFollowing()
+	isFollowing = false
+	ToggleBtn.Text = "Follow: OFF"
+	ToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+	resetPhysics()
+end
+
+-- Refresh Player List with Filter
+local function refreshPlayerList()
+	for _, child in ipairs(PlayerListFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+	
+	local filter = string.lower(SearchBox.Text)
+	local count = 0
+	
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local displayName = string.lower(plr.DisplayName)
+			local username = string.lower(plr.Name)
+			
+			if filter == "" or string.find(displayName, filter) or string.find(username, filter) then
+				count = count + 1
+				local Btn = Instance.new("TextButton")
+				Btn.Size = UDim2.new(1, 0, 0, 25)
+				Btn.BackgroundColor3 = (selectedPlayer == plr) and Color3.fromRGB(0, 140, 255) or Color3.fromRGB(40, 40, 40)
+				Btn.Text = plr.DisplayName .. " (@" .. plr.Name .. ")"
+				Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Btn.Font = Enum.Font.SourceSans
+				Btn.TextSize = 12
+				Btn.Parent = PlayerListFrame
+				
+				Btn.MouseButton1Click:Connect(function()
+					selectedPlayer = plr
+					refreshPlayerList()
+				end)
+			end
+		end
+	end
+	
+	PlayerListFrame.CanvasSize = UDim2.new(0, 0, 0, count * 25)
+end
+
+SearchBox:GetPropertyChangedSignal("Text"):Connect(refreshPlayerList)
+
+-- Auto-Select Next Player on Leave
+Players.PlayerRemoving:Connect(function(plr)
+	if selectedPlayer == plr then
+		local remainingPlayers = {}
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer then
+				table.insert(remainingPlayers, p)
+			end
+		end
+		
+		if #remainingPlayers > 0 then
+			selectedPlayer = remainingPlayers[1]
+		else
+			selectedPlayer = nil
+			stopFollowing()
+		end
+	end
+	refreshPlayerList()
+end)
+
+Players.PlayerAdded:Connect(refreshPlayerList)
+refreshPlayerList()
+
+-- Height Limit Input
+HeightBox.FocusLost:Connect(function()
+	local val = tonumber(HeightBox.Text)
+	if val then
+		heightOffset = math.clamp(math.floor(val), 1, 50)
+	end
+	HeightBox.Text = tostring(heightOffset)
+end)
+
+-- Minimize Button Logic
+MinimizeBtn.MouseButton1Click:Connect(function()
+	isMinimized = not isMinimized
+	if isMinimized then
+		ContentFrame.Visible = false
+		MainFrame.Size = UDim2.new(0, 240, 0, 32)
+		MinimizeBtn.Text = "+"
+	else
+		ContentFrame.Visible = true
+		MainFrame.Size = UDim2.new(0, 240, 0, 360)
+		MinimizeBtn.Text = "_"
+	end
+end)
+
+-- Toggle Anti-Aim Button Logic
+AntiAimBtn.MouseButton1Click:Connect(function()
+	isAntiAim = not isAntiAim
+	if isAntiAim then
+		AntiAimBtn.Text = "Anti-Aim: ON"
+		AntiAimBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+	else
+		AntiAimBtn.Text = "Anti-Aim: OFF"
+		AntiAimBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+	end
+end)
+
+-- Toggle Follow Button Logic
+ToggleBtn.MouseButton1Click:Connect(function()
+	if not selectedPlayer then
+		ToggleBtn.Text = "Select a Player!"
+		task.wait(1)
+		ToggleBtn.Text = isFollowing and "Follow: ON" or "Follow: OFF"
+		return
+	end
+	
+	isFollowing = not isFollowing
+	
+	if isFollowing then
+		ToggleBtn.Text = "Follow: ON"
+		ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+	else
+		stopFollowing()
+	end
+end)
+
+-- Render Loop: Unanchored Physics Positioning for Server Hitbox Registration
+RunService.Stepped:Connect(function()
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	
+	-- Spin Angle for Anti-Aim
+	spinAngle = (spinAngle + 45) % 360
+	local rotationCFrame = CFrame.Angles(0, math.rad(spinAngle), 0)
+	
+	-- Distance Indicator Update
+	if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") and myRoot then
+		local targetRoot = selectedPlayer.Character.HumanoidRootPart
+		local dist = math.floor((myRoot.Position - targetRoot.Position).Magnitude)
+		DistanceLabel.Text = "Distance: " .. tostring(dist) .. " studs"
+	else
+		DistanceLabel.Text = "Distance: Target Dead / Spawning..."
+	end
+	
+	-- Active Follow Execution
+	if isFollowing and selectedPlayer then
+		local targetChar = selectedPlayer.Character
+		local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+		local humanoid = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+		
+		if myChar and myRoot and targetRoot and humanoid and humanoid.Health > 0 then
+			-- Keep Unanchored so tools, swords, and guns deal damage
+			myRoot.Anchored = false
+			
+			-- Zero linear & angular velocity to prevent physics drift
+			myRoot.AssemblyLinearVelocity = Vector3.zero
+			myRoot.AssemblyAngularVelocity = Vector3.zero
+			
+			local baseCFrame = targetRoot.CFrame * CFrame.new(0, heightOffset, 0)
+			
+			if isAntiAim then
+				myRoot.CFrame = CFrame.new(baseCFrame.Position) * rotationCFrame
+			else
+				myRoot.CFrame = baseCFrame
+			end
+		else
+			resetPhysics()
+		end
+	elseif isAntiAim and myRoot then
+		myRoot.CFrame = CFrame.new(myRoot.Position) * rotationCFrame
+	end
+end)
