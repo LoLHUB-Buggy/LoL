@@ -1,0 +1,285 @@
+-- Camera Lock Lua Script with GUI Toggle
+-- Works with Roblox
+
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
+
+local player = players.LocalPlayer
+local camera = workspace.CurrentCamera
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Camera lock state
+local cameraLocked = false
+local lockOffset = Vector3.new(0, 2, 0) -- Offset from character
+local currentFOV = 70 -- Default FOV
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CameraLockGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main Frame (collapsible)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 220, 0, 420)
+mainFrame.Position = UDim2.new(0, 20, 0, 20)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = true
+mainFrame.Parent = screenGui
+
+-- Title Bar
+local titleBar = Instance.new("TextLabel")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleBar.Text = "Camera Lock"
+titleBar.TextSize = 14
+titleBar.Font = Enum.Font.GothamBold
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "X"
+closeButton.TextSize = 18
+closeButton.Font = Enum.Font.GothamBold
+closeButton.BorderSizePixel = 0
+closeButton.Parent = titleBar
+
+-- Toggle Button
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(1, -20, 0, 50)
+toggleButton.Position = UDim2.new(0, 10, 0, 60)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 150)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "Lock Camera: OFF"
+toggleButton.TextSize = 14
+toggleButton.Font = Enum.Font.Gotham
+toggleButton.BorderSizePixel = 0
+toggleButton.Parent = mainFrame
+
+-- Status Label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Size = UDim2.new(1, -20, 0, 60)
+statusLabel.Position = UDim2.new(0, 10, 0, 120)
+statusLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.Text = "Status: Unlocked\n\nPress TAB to toggle\nPress Q to open/close GUI"
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextWrapped = true
+statusLabel.BorderSizePixel = 0
+statusLabel.Parent = mainFrame
+
+-- Info Label
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Name = "InfoLabel"
+infoLabel.Size = UDim2.new(1, -20, 0, 30)
+infoLabel.Position = UDim2.new(0, 10, 0, 190)
+infoLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+infoLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+infoLabel.Text = "Camera locked!"
+infoLabel.TextSize = 11
+infoLabel.Font = Enum.Font.Gotham
+infoLabel.Visible = false
+infoLabel.BorderSizePixel = 0
+infoLabel.Parent = mainFrame
+
+-- FOV Label
+local fovLabel = Instance.new("TextLabel")
+fovLabel.Name = "FOVLabel"
+fovLabel.Size = UDim2.new(1, -20, 0, 25)
+fovLabel.Position = UDim2.new(0, 10, 0, 230)
+fovLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+fovLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+fovLabel.Text = "FOV: 70"
+fovLabel.TextSize = 12
+fovLabel.Font = Enum.Font.GothamBold
+fovLabel.BorderSizePixel = 0
+fovLabel.Parent = mainFrame
+
+-- FOV Slider
+local fovSlider = Instance.new("Frame")
+fovSlider.Name = "FOVSlider"
+fovSlider.Size = UDim2.new(1, -20, 0, 20)
+fovSlider.Position = UDim2.new(0, 10, 0, 260)
+fovSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+fovSlider.BorderSizePixel = 1
+fovSlider.BorderColor3 = Color3.fromRGB(100, 100, 100)
+fovSlider.Parent = mainFrame
+
+-- FOV Slider Fill
+local fovSliderFill = Instance.new("Frame")
+fovSliderFill.Name = "Fill"
+fovSliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+fovSliderFill.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+fovSliderFill.BorderSizePixel = 0
+fovSliderFill.Parent = fovSlider
+
+-- FOV Min/Max Labels
+local fovMinLabel = Instance.new("TextLabel")
+fovMinLabel.Name = "MinLabel"
+fovMinLabel.Size = UDim2.new(0, 30, 0, 20)
+fovMinLabel.Position = UDim2.new(0, 10, 0, 285)
+fovMinLabel.BackgroundTransparency = 1
+fovMinLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+fovMinLabel.Text = "50"
+fovMinLabel.TextSize = 10
+fovMinLabel.Font = Enum.Font.Gotham
+fovMinLabel.Parent = mainFrame
+
+local fovMaxLabel = Instance.new("TextLabel")
+fovMaxLabel.Name = "MaxLabel"
+fovMaxLabel.Size = UDim2.new(0, 30, 0, 20)
+fovMaxLabel.Position = UDim2.new(1, -40, 0, 285)
+fovMaxLabel.BackgroundTransparency = 1
+fovMaxLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+fovMaxLabel.Text = "500"
+fovMaxLabel.TextSize = 10
+fovMaxLabel.Font = Enum.Font.Gotham
+fovMaxLabel.Parent = mainFrame
+
+-- FOV Decrease Button
+local fovDecButton = Instance.new("TextButton")
+fovDecButton.Name = "DecButton"
+fovDecButton.Size = UDim2.new(0, 50, 0, 25)
+fovDecButton.Position = UDim2.new(0, 10, 0, 310)
+fovDecButton.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+fovDecButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovDecButton.Text = "- FOV"
+fovDecButton.TextSize = 11
+fovDecButton.Font = Enum.Font.Gotham
+fovDecButton.BorderSizePixel = 0
+fovDecButton.Parent = mainFrame
+
+-- FOV Increase Button
+local fovIncButton = Instance.new("TextButton")
+fovIncButton.Name = "IncButton"
+fovIncButton.Size = UDim2.new(0, 50, 0, 25)
+fovIncButton.Position = UDim2.new(1, -60, 0, 310)
+fovIncButton.BackgroundColor3 = Color3.fromRGB(50, 100, 50)
+fovIncButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovIncButton.Text = "+ FOV"
+fovIncButton.TextSize = 11
+fovIncButton.Font = Enum.Font.Gotham
+fovIncButton.BorderSizePixel = 0
+fovIncButton.Parent = mainFrame
+
+-- Reset FOV Button
+local resetFovButton = Instance.new("TextButton")
+resetFovButton.Name = "ResetButton"
+resetFovButton.Size = UDim2.new(1, -20, 0, 25)
+resetFovButton.Position = UDim2.new(0, 10, 0, 345)
+resetFovButton.BackgroundColor3 = Color3.fromRGB(100, 100, 50)
+resetFovButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetFovButton.Text = "Reset FOV (70)"
+resetFovButton.TextSize = 11
+resetFovButton.Font = Enum.Font.Gotham
+resetFovButton.BorderSizePixel = 0
+resetFovButton.Parent = mainFrame
+
+-- Functions
+local function updateFOVDisplay()
+	fovLabel.Text = "FOV: " .. math.floor(currentFOV)
+	local fovPercent = (currentFOV - 50) / (500 - 50)
+	fovSliderFill.Size = UDim2.new(fovPercent, 0, 1, 0)
+	camera.FieldOfView = currentFOV
+end
+
+local function adjustFOV(amount)
+	currentFOV = math.clamp(currentFOV + amount, 50, 500)
+	updateFOVDisplay()
+end
+
+local function resetFOV()
+	currentFOV = 70
+	updateFOVDisplay()
+end
+
+local function updateButtonState()
+	if cameraLocked then
+		toggleButton.Text = "Lock Camera: ON"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+		statusLabel.Text = "Status: LOCKED ✓\n\nPress TAB to toggle\nPress Q to open/close GUI"
+		infoLabel.Visible = true
+	else
+		toggleButton.Text = "Lock Camera: OFF"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+		statusLabel.Text = "Status: Unlocked\n\nPress TAB to toggle\nPress Q to open/close GUI"
+		infoLabel.Visible = false
+	end
+end
+
+local function toggleCameraLock()
+	cameraLocked = not cameraLocked
+	updateButtonState()
+end
+
+local function toggleGui()
+	mainFrame.Visible = not mainFrame.Visible
+end
+
+-- Button Connections
+toggleButton.MouseButton1Click:Connect(toggleCameraLock)
+closeButton.MouseButton1Click:Connect(toggleGui)
+fovDecButton.MouseButton1Click:Connect(function()
+	adjustFOV(-10)
+end)
+fovIncButton.MouseButton1Click:Connect(function()
+	adjustFOV(10)
+end)
+resetFovButton.MouseButton1Click:Connect(resetFOV)
+
+-- FOV Slider Click
+fovSlider.InputBegan:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		local sliderSize = fovSlider.AbsoluteSize.X
+		local clickPosition = userInputService:GetMouseLocation().X - fovSlider.AbsolutePosition.X
+		local percent = math.clamp(clickPosition / sliderSize, 0, 1)
+		currentFOV = 50 + (percent * 450)
+		updateFOVDisplay()
+	end
+end)
+
+-- Keyboard Input
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	if input.KeyCode == Enum.KeyCode.Tab then
+		toggleCameraLock()
+	elseif input.KeyCode == Enum.KeyCode.Q then
+		toggleGui()
+	end
+end)
+
+-- Instant Camera Lock Loop
+runService.RenderStepped:Connect(function()
+	if cameraLocked and character and humanoidRootPart then
+		local targetPosition = humanoidRootPart.Position + lockOffset
+		camera.CFrame = CFrame.new(targetPosition, targetPosition + Vector3.new(0, 0, -1))
+		camera.FieldOfView = currentFOV
+	end
+end)
+
+-- Handle character respawn
+player.CharacterAdded:Connect(function(newCharacter)
+	character = newCharacter
+	humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+end)
+
+print("✓ Camera Lock Script Loaded!")
+print("TAB - Toggle camera lock")
+print("Q - Open/Close GUI")
